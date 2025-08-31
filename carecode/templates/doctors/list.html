@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="fw-bold text-primary">Doctors</h3>
+  <a href="{{ url_for('add_doctor') }}" class="btn btn-success fw-bold shadow-sm">
+    + Add Doctor
+  </a>
+</div>
+
+{% if doctors %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle shadow-sm">
+      <thead class="table-primary">
+        <tr>
+          <th>Full Name</th>
+          <th>License No</th>
+          <th>Email</th>
+          <th>Specialties</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doctor in doctors %}
+        <tr>
+          <td>{{ doctor.full_name }}</td>
+          <td>{{ doctor.license_no }}</td>
+          <td>{{ doctor.email }}</td>
+          <td>
+            {% if doctor.specialties %}
+              {{ doctor.specialties | join(', ') }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if doctor.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('edit_doctor', doctor_id=doctor.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-info">No doctors found.</div>
+{% endif %}
+{% endblock %}

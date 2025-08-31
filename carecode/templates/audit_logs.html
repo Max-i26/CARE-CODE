@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - CareCode</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .audit-card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .log-entry {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+        .log-entry:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        .log-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 0.75rem 1rem;
+        }
+        .log-body {
+            background: #f8f9fa;
+            padding: 1rem;
+        }
+        .action-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+        }
+        .user-type-badge {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+        }
+        .details-section {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .no-logs {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+        .filter-card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .timestamp {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .ip-info {
+            font-size: 0.85rem;
+            color: #495057;
+        }
+        .json-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .collapsible-details {
+            cursor: pointer;
+        }
+        .collapsible-details:hover {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-heartbeat"></i> CareCode
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                    {% if current_user_type in ['ministry', 'hospital_admin', 'doctor'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('patients') }}">Patients</a>
+                    </li>
+                    {% endif %}
+                    {% if current_user_type in ['ministry', 'hospital_admin'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('doctors') }}">Doctors</a>
+                    </li>
+                    {% endif %}
+                    {% if current_user_type == 'doctor' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('encounters') }}">Encounters</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('medical_records') }}">Medical Records</a>
+                    </li>
+                    {% if current_user_type in ['ministry', 'hospital_admin'] %}
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('audit_logs') }}">Audit Logs</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{ current_username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('change_password') }}">Change Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1><i class="fas fa-clipboard-list"></i> Audit Logs</h1>
+                        <p class="text-muted mb-0">System activity tracking and monitoring</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="refreshLogs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card filter-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Options</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('audit_logs') }}" id="filterForm">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">User Type</label>
+                            <select class="form-select" name="user_type" id="userType">
+                                <option value="">All User Types</option>
+                                <option value="ministry"{{ 'selected' if request.args.get('user_type') == 'ministry' }} > Ministry</option>
+                                <option value="hospital_admin" {{ 'selected' if request.args.get('user_type') == 'hospital_admin' }}>Hospital Admin</option>
+                                <option value="doctor" {{ 'selected' if request.args.get('user_type') == 'doctor' }}>Doctor</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Action Type</label>
+                            <select class="form-select" name="action" id="actionType">
+                                 <option value="">All Actions</option>
+        <option value="patient_created" {{ 'selected' if request.args.get('action') == 'patient_created' else '' }}>Patient Created</option>
+        <option value="patient_updated" {{ 'selected' if request.args.get('action') == 'patient_updated' else '' }}>Patient Updated</option>
+        <option value="patient_viewed" {{ 'selected' if request.args.get('action') == 'patient_viewed' else '' }}>Patient Viewed</option>
+        <option value="encounter_created" {{ 'selected' if request.args.get('action') == 'encounter_created' else '' }}>Encounter Created</option>
+        <option value="encounter_updated" {{ 'selected' if request.args.get('action') == 'encounter_updated' else '' }}>Encounter Updated</option>
+        <option value="doctor_created" {{ 'selected' if request.args.get('action') == 'doctor_created' else '' }}>Doctor Created</option>
+        <option value="hospital_created" {{ 'selected' if request.args.get('action') == 'hospital_created' else '' }}>Hospital Created</option>
+        <option value="qr_token_generated" {{ 'selected' if request.args.get('action') == 'qr_token_generated' else '' }}>QR Token Generated</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date From</label>
+                            <input type="date" class="form-control" name="date_from" value="{{ request.args.get('date_from', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date To</label>
+                            <input type="date" class="form-control" name="date_to" value="{{ request.args.get('date_to', '') }}">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('audit_logs') }}" class="btn btn-outline-secondary ms-2">
+                                <i class="fas fa-times"></i> Clear Filters
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card audit-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list"></i> System Activity Logs</h5>
+                {% if logs %}
+                <span class="badge bg-secondary">
+                    {{ logs|length }} log{{ 's' if logs|length != 1 else '' }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if logs %}
+                    {% for log in logs %}
+                    <div class="log-entry">
+                        <div class="log-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <div class="d-flex align-items-center">
+                                        <span class="action-badge bg-light text-dark me-2">
+                                            {{ log.action|replace('_', ' ')|title }}
+                                        </span>
+                                        {% if log.acting_user_type %}
+                                        <span class="user-type-badge bg-info text-white me-2">
+                                            {{ log.acting_user_type|replace('_', ' ')|title }}
+                                        </span>
+                                        {% endif %}
+                                        {% if log.acting_user_id %}
+                                        <small>ID: {{ log.acting_user_id }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="timestamp">
+                                        <i class="fas fa-clock"></i> {{ log.created_at|datetime('%Y-%m-%d %H:%M:%S') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="log-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {% if log.patient_id %}
+                                    <div class="mb-2">
+                                        <strong><i class="fas fa-user"></i> Patient ID:</strong>
+                                        <a href="{{ url_for('patient_detail', patient_id=log.patient_id) }}" class="text-decoration-none">
+                                            {{ log.patient_id }}
+                                        </a>
+                                        {% if log.patient %}
+                                        <span class="text-muted">({{ log.patient.full_name }})</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+
+                                    {% if log.hospital_id %}
+                                    <div class="mb-2">
+                                        <strong><i class="fas fa-hospital"></i> Hospital ID:</strong> {{ log.hospital_id }}
+                                        {% if log.hospital %}
+                                        <span class="text-muted">({{ log.hospital.name }})</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    {% if log.ip_address %}
+                                    <div class="mb-2 ip-info">
+                                        <strong><i class="fas fa-network-wired"></i> IP Address:</strong> {{ log.ip_address }}
+                                    </div>
+                                    {% endif %}
+
+                                    {% if log.user_agent %}
+                                    <div class="mb-2 ip-info">
+                                        <strong><i class="fas fa-desktop"></i> User Agent:</strong>
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ log.user_agent }}">
+                                            {{ log.user_agent }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if log.details %}
+                            <div class="details-section">
+                                <div class="collapsible-details" data-bs-toggle="collapse" data-bs-target="#details-{{ log.id }}" aria-expanded="false">
+                                    <strong><i class="fas fa-info-circle"></i> Additional Details</strong>
+                                    <i class="fas fa-chevron-down float-end"></i>
+                                </div>
+                                <div class="collapse mt-2" id="details-{{ log.id }}">
+                                    <div class="json-details">{{ log.details|json_pretty }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% set action_context = {
+                                'patient_created': 'New patient registered in the system',
+                                'patient_updated': 'Patient information was modified',
+                                'patient_viewed': 'Patient record was accessed',
+                                'encounter_created': 'New medical encounter recorded',
+                                'encounter_updated': 'Medical encounter was modified',
+                                'doctor_created': 'New doctor account created',
+                                'doctor_updated': 'Doctor information was modified',
+                                'hospital_created': 'New hospital added to system',
+                                'hospital_updated': 'Hospital information was modified',
+                                'qr_token_generated': 'QR access token generated',
+                                'qr_token_revoked': 'QR access token revoked',
+                                'password_changed': 'User password was changed',
+                                'profile_updated': 'User profile was updated'
+                            } %}
+
+                            {% if action_context[log.action] %}
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-question-circle"></i> {{ action_context[log.action] }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if logs|length >= 100 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Showing the most recent 100 log entries. Use filters to narrow down results for specific searches.
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="no-logs">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <h5>No Audit Logs Found</h5>
+                        {% if request.args %}
+                        <p>No logs match your current filter criteria. Try adjusting the filters or <a href="{{ url_for('audit_logs') }}">view all logs</a>.</p>
+                        {% else %}
+                        <p>No system activity has been recorded yet.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-light text-center py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; {{ now.year }} CareCode - Healthcare Management System</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Refresh logs function
+        function refreshLogs() {
+            window.location.reload();
+        }
+
+        // Auto-refresh every 5 minutes
+        setInterval(function() {
+            if (document.visibilityState === 'visible') {
+                refreshLogs();
+            }
+        }, 300000);
+
+        // Date validation
+        const dateFrom = document.querySelector('input[name="date_from"]');
+        const dateTo = document.querySelector('input[name="date_to"]');
+
+        if (dateFrom && dateTo) {
+            dateFrom.addEventListener('change', function() {
+                dateTo.min = this.value;
+            });
+
+            dateTo.addEventListener('change', function() {
+                dateFrom.max = this.value;
+            });
+        }
+
+        // Collapse/expand all details
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add expand/collapse all buttons
+            const cardHeader = document.querySelector('.audit-card .card-header');
+            if (cardHeader && document.querySelectorAll('.details-section').length > 0) {
+                const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'btn-group btn-group-sm ms-2';
+                buttonGroup.innerHTML = `
+                    <button type="button" class="btn btn-outline-secondary" onclick="expandAllDetails()">
+                        <i class="fas fa-expand-arrows-alt"></i> Expand All
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="collapseAllDetails()">
+                        <i class="fas fa-compress-arrows-alt"></i> Collapse All
+                    </button>
+                `;
+                cardHeader.appendChild(buttonGroup);
+            }
+        });
+
+        function expandAllDetails() {
+            document.querySelectorAll('.collapse').forEach(function(element) {
+                if (!element.classList.contains('show')) {
+                    new bootstrap.Collapse(element, {show: true});
+                }
+            });
+        }
+
+        function collapseAllDetails() {
+            document.querySelectorAll('.collapse.show').forEach(function(element) {
+                new bootstrap.Collapse(element, {hide: true});
+            });
+        }
+
+        // Highlight recent logs (within last hour)
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+            document.querySelectorAll('.log-entry').forEach(function(logEntry) {
+                const timestampText = logEntry.querySelector('.timestamp').textContent.trim();
+
+                // Extracting date and time from the string
+                const [datePart, timePart] = timestampText.split(' ').slice(1);
+
+                // Creating a valid Date object
+                const logTime = new Date(`${datePart}T${timePart}`);
+
+                if (logTime > oneHourAgo) {
+                    logEntry.style.border = '2px solid #28a745';
+                    logEntry.classList.add('border-success');
+                }
+            });
+        });
+
+        // Filter form enhancement
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            // Remove empty parameters
+            const formData = new FormData(this);
+            const params = new URLSearchParams();
+
+            for (let [key, value] of formData.entries()) {
+                if (value.trim()) {
+                    params.append(key, value);
+                }
+            }
+
+            if (params.toString()) {
+                window.location.href = this.action + '?' + params.toString();
+            } else {
+                window.location.href = this.action;
+            }
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

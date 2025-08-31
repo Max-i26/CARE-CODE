@@ -1,0 +1,20 @@
+# Flask core
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-WTF==1.2.1
+Flask-Login==0.6.3
+
+# Database (MySQL with PyMySQL)
+SQLAlchemy==2.0.31
+PyMySQL==1.1.1
+
+# Forms & email validation
+WTForms==3.1.2
+email-validator==2.1.1
+
+# Migrations (if you use Flask-Migrate)
+Flask-Migrate==4.0.7
+alembic==1.13.1
+
+# Optional but common
+python-dotenv==1.0.1  # for .env configs

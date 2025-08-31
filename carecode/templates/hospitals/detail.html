@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="fw-bold text-primary mb-3">Patient Details</h3>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <h4 class="fw-bold">{{ patient.full_name }}</h4>
+    <p>DOB: {{ patient.date_of_birth or "—" }} | Gender: {{ patient.gender or "—" }}</p>
+    <p>Email: {{ patient.email or "—" }}</p>
+    <p>Phone: {{ patient.contact_info.phone_primary if patient.contact_info else "—" }}</p>
+    <p>Blood Type: {{ patient.blood_type or "—" }}</p>
+    <p>Guardian Contact: {{ patient.guardian_number or "—" }}</p>
+    <a href="{{ url_for('edit_patient', patient_id=patient.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+    <a href="{{ url_for('add_patient_identifier', patient_id=patient.id) }}" class="btn btn-sm btn-outline-primary">+ Add Identifier</a>
+  </div>
+</div>
+
+<h5 class="fw-bold">Identifiers</h5>
+<ul class="list-group mb-4">
+  {% for id in identifiers %}
+    <li class="list-group-item">{{ id.id_type | capitalize }}: {{ id.id_value }}</li>
+  {% else %}
+    <li class="list-group-item text-muted">No identifiers added.</li>
+  {% endfor %}
+</ul>
+
+<h5 class="fw-bold">Medical Encounters</h5>
+<ul class="list-group mb-4">
+  {% for enc in encounters %}
+    <li class="list-group-item">
+      <strong>{{ enc.treatment_date }}</strong> - {{ enc.diagnosis_text }}
+    </li>
+  {% else %}
+    <li class="list-group-item text-muted">No encounters recorded.</li>
+  {% endfor %}
+</ul>
+
+<h5 class="fw-bold">QR Tokens</h5>
+<ul class="list-group">
+  {% for qr in qr_tokens %}
+    <li class="list-group-item">
+      Token: {{ qr.token[:8] }}... | Purpose: {{ qr.purpose }} | 
+      {% if qr.is_valid() %}
+        <span class="badge bg-success">Valid</span>
+      {% else %}
+        <span class="badge bg-danger">Expired/Revoked</span>
+      {% endif %}
+    </li>
+  {% else %}
+    <li class="list-group-item text-muted">No QR tokens available.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

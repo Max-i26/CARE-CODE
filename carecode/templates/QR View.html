@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-gradient text-white text-center py-4" style="background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%);">
+          <div class="mb-2">
+            <i class="fas fa-qrcode fa-3x opacity-75"></i>
+          </div>
+          <h2 class="mb-1 fw-bold">Patient Information</h2>
+          <p class="mb-0 opacity-75">Accessed via QR Code</p>
+        </div>
+        
+        <div class="card-body p-4">
+          <!-- Patient Information -->
+          <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary mb-3">{{ patient.full_name }}</h3>
+          </div>
+          
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="info-item p-3 bg-light rounded">
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="fas fa-calendar-alt me-2"></i>Date of Birth
+                </h6>
+                <p class="mb-0 fs-5">{{ patient.date_of_birth.strftime('%B %d, %Y') if patient.date_of_birth else "Not specified" }}</p>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="info-item p-3 bg-light rounded">
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="fas fa-venus-mars me-2"></i>Gender
+                </h6>
+                <p class="mb-0 fs-5">{{ patient.gender | title if patient.gender else "Not specified" }}</p>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="info-item p-3 bg-light rounded">
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="fas fa-tint me-2"></i>Blood Type
+                </h6>
+                <p class="mb-0 fs-5">{{ patient.blood_type or "Not specified" }}</p>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="info-item p-3 bg-light rounded">
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="fas fa-phone me-2"></i>Contact
+                </h6>
+                <p class="mb-0 fs-5">
+                  {% if patient.contact_info and patient.contact_info.get('phone_primary') %}
+                    {{ patient.contact_info.phone_primary }}
+                  {% else %}
+                    Not specified
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            
+            {% if patient.address %}
+            <div class="col-12">
+              <div class="info-item p-3 bg-light rounded">
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="fas fa-map-marker-alt me-2"></i>Address
+                </h6>
+                <p class="mb-0">
+                  {% set addr = patient.address %}
+                  {% if addr.get('address_line1') %}{{ addr.address_line1 }}<br>{% endif %}
+                  {% if addr.get('address_line2') %}{{ addr.address_line2 }}<br>{% endif %}
+                  {% if addr.get('city') or addr.get('province') %}
+                    {{ addr.get('city', '') }}{% if addr.get('city') and addr.get('province') %}, {% endif %}{{ addr.get('province', '') }}
+                    {% if addr.get('postal_code') %} {{ addr.postal_code }}{% endif %}
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          
+          <!-- Information Notice -->
+          <div class="alert alert-info mt-4 border-0" style="background-color: #e8f4f8;">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-info-circle me-3 text-info fs-4"></i>
+              <div>
+                <h6 class="mb-1 fw-bold">Limited Information View</h6>
+                <p class="mb-0 small">This is basic patient information accessed via QR code. For complete medical records and detailed information, please log in to the CareCode system.</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Access Info -->
+          <div class="text-center mt-4">
+            <p class="text-muted small mb-2">
+              <i class="fas fa-shield-alt me-1"></i>
+              Secure patient information access
+            </p>
+            <p class="text-muted small">
+              Access logged: {{ moment().format('MMMM DD, YYYY [at] HH:mm') }}
+            </p>
+          </div>
+        </div>
+        
+        <div class="card-footer bg-light text-center py-3">
+          <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-home me-2"></i>Go to CareCode System
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.info-item {
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.info-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: #dee2e6;
+}
+
+.card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.card-header {
+  border-bottom: none;
+}
+
+.bg-gradient {
+  background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%) !important;
+}
+
+@media (max-width: 768px) {
+  .card-body {
+    padding: 2rem 1.5rem !important;
+  }
+  
+  .info-item {
+    margin-bottom: 1rem;
+  }
+}
+</style>
+{% endblock %}

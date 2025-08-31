@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - CareCode Medical System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .stats-card h3 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 40px 0;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: 30px;
+        }
+
+        .ministry-card {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .hospital-card {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .doctor-card {
+            background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-export {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 25px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .activity-item {
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            background: #f8f9ff;
+            margin-bottom: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .metric-icon {
+            font-size: 2rem;
+            opacity: 0.3;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .position-relative {
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-heartbeat me-2"></i>CareCode
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="report-header">
+        <div class="container">
+            <div class="text-center">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-chart-line me-3"></i>System Reports
+                </h1>
+                <p class="lead mb-0">Comprehensive analytics and insights</p>
+                <p class="small">Generated on {{ now.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-4">
+        {% if user_type == 'ministry' %}
+            <!-- Ministry Dashboard -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card ministry-card position-relative">
+                        <i class="fas fa-hospital metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Hospitals</div>
+                        <h3>{{ total_hospitals }}</h3>
+                        <p class="mb-0 small">Under {{ ministry.name }}</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-users metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Patients</div>
+                        <h3>{{ total_patients }}</h3>
+                        <p class="mb-0 small">Across all hospitals</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-user-md metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Doctors</div>
+                        <h3>{{ total_doctors }}</h3>
+                        <p class="mb-0 small">Active practitioners</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-notes-medical metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Encounters</div>
+                        <h3>{{ total_encounters }}</h3>
+                        <p class="mb-0 small">Medical records</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hospitals Overview -->
+            <div class="chart-container">
+                <h4 class="mb-4"><i class="fas fa-building me-2 text-primary"></i>Hospitals Overview</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Hospital Name</th>
+                                <th>Code</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Contact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hospital in hospitals %}
+                            <tr>
+                                <td class="fw-semibold">{{ hospital.name }}</td>
+                                <td><span class="badge bg-secondary">{{ hospital.code or 'N/A' }}</span></td>
+                                <td>
+                                    {% if hospital.address %}
+                                        {{ hospital.address.get('city', 'N/A') }}, {{ hospital.address.get('province', 'N/A') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if hospital.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if hospital.contact_info %}
+                                        {{ hospital.contact_info.get('phone_primary', 'N/A') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Monthly Encounter Statistics -->
+            {% if monthly_stats %}
+            <div class="chart-container">
+                <h4 class="mb-4"><i class="fas fa-chart-bar me-2 text-primary"></i>Monthly Encounter Statistics</h4>
+                <canvas id="monthlyChart" width="400" height="200"></canvas>
+            </div>
+            {% endif %}
+
+        {% elif user_type == 'hospital_admin' %}
+            <!-- Hospital Admin Dashboard -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="stats-card hospital-card position-relative">
+                        <i class="fas fa-users metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Patients</div>
+                        <h3>{{ total_patients }}</h3>
+                        <p class="mb-0 small">Registered patients</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-user-md metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Doctors</div>
+                        <h3>{{ total_doctors }}</h3>
+                        <p class="mb-0 small">Active staff</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-notes-medical metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Encounters</div>
+                        <h3>{{ total_encounters }}</h3>
+                        <p class="mb-0 small">Medical records</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hospital Information -->
+            <div class="chart-container">
+                <h4 class="mb-4"><i class="fas fa-hospital me-2 text-primary"></i>{{ hospital.name }} - Details</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Hospital Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Code:</strong> {{ hospital.code or 'Not assigned' }}</li>
+                            <li><strong>Status:</strong>
+                                <span class="badge bg-{{ 'success' if hospital.is_active else 'danger' }}">
+                                    {{ 'Active' if hospital.is_active else 'Inactive' }}
+                                </span>
+                            </li>
+                            <li><strong>Established:</strong> {{ hospital.created_at.strftime('%B %d, %Y') }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Contact Information</h6>
+                        {% if hospital.contact_info %}
+                        <ul class="list-unstyled">
+                            <li><strong>Phone:</strong> {{ hospital.contact_info.get('phone_primary', 'N/A') }}</li>
+                            <li><strong>Email:</strong> {{ hospital.contact_info.get('email', 'N/A') }}</li>
+                            <li><strong>Emergency:</strong> {{ hospital.contact_info.get('emergency_contact', 'N/A') }}</li>
+                        </ul>
+                        {% else %}
+                        <p class="text-muted">No contact information available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        {% elif user_type == 'doctor' %}
+            <!-- Doctor Dashboard -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="stats-card doctor-card position-relative">
+                        <i class="fas fa-notes-medical metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Total Encounters</div>
+                        <h3>{{ total_encounters }}</h3>
+                        <p class="mb-0 small">Medical consultations</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stats-card position-relative">
+                        <i class="fas fa-users metric-icon"></i>
+                        <div class="small text-uppercase fw-semibold opacity-75">Patients Treated</div>
+                        <h3>{{ total_patients }}</h3>
+                        <p class="mb-0 small">Unique patients</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Doctor Information -->
+            <div class="chart-container">
+                <h4 class="mb-4"><i class="fas fa-user-md me-2 text-primary"></i>Dr. {{ doctor.full_name }} - Practice Summary</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Professional Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>License No:</strong> {{ doctor.license_no }}</li>
+                            <li><strong>Hospital:</strong> {{ hospital.name }}</li>
+                            {% if doctor.specialties %}
+                            <li><strong>Specialties:</strong>
+                                {% for specialty in doctor.specialties %}
+                                    <span class="badge bg-primary me-1">{{ specialty }}</span>
+                                {% endfor %}
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Contact Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Email:</strong> {{ doctor.email or 'N/A' }}</li>
+                            {% if doctor.contact_info %}
+                            <li><strong>Phone:</strong> {{ doctor.contact_info.get('phone_primary', 'N/A') }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Export Options -->
+        <div class="chart-container">
+            <h4 class="mb-4"><i class="fas fa-download me-2 text-primary"></i>Export Reports</h4>
+            <div class="row">
+                <div class="col-md-12">
+                    <p class="text-muted mb-3">Generate and download detailed reports</p>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <button class="btn btn-export" onclick="exportToPDF()">
+                            <i class="fas fa-file-pdf me-2"></i>Export to PDF
+                        </button>
+                        <button class="btn btn-export" onclick="exportToExcel()">
+                            <i class="fas fa-file-excel me-2"></i>Export to Excel
+                        </button>
+                        <button class="btn btn-export" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>Print Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <script>
+        {% if user_type == 'ministry' and monthly_stats %}
+        // Monthly Encounter Chart for Ministry
+        const ctx = document.getElementById('monthlyChart');
+        const monthlyData = {{ monthly_stats | tojson }};
+
+        const labels = monthlyData.map(item => {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return months[item.month - 1] + ' ' + item.year;
+        });
+
+        const data = monthlyData.map(item => item.count);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Monthly Encounters',
+                    data: data,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+
+        function exportToPDF() {
+            alert('PDF export functionality would be implemented here');
+            // Implement PDF export logic
+        }
+
+        function exportToExcel() {
+            alert('Excel export functionality would be implemented here');
+            // Implement Excel export logic
+        }
+
+        // Print styles
+        const printStyles = `
+            <style>
+                @media print {
+                    .btn, .navbar, .no-print { display: none !important; }
+                    .chart-container { break-inside: avoid; }
+                    body { background: white !important; }
+                    .stats-card { background: #f8f9fa !important; color: #333 !important; }
+                }
+            </style>
+        `;
+        document.head.insertAdjacentHTML('beforeend', printStyles);
+    </script>
+</body>
+</html>

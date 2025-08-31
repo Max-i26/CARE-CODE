@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white">
+          <h3 class="mb-0 fw-bold">
+            <i class="fas fa-user-plus me-2"></i>Add New Patient
+          </h3>
+          {% if hospital %}
+            <small class="opacity-75">{{ hospital.name }}</small>
+          {% endif %}
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Success QR Display (shown after patient creation) -->
+          {% if patient and patient.qr_token %}
+            <div class="alert alert-success text-center mb-4" id="qr-success-display">
+              <h4 class="fw-bold mb-3">
+                <i class="fas fa-check-circle me-2"></i>Patient Added Successfully!
+              </h4>
+              <p class="mb-3">A unique QR code has been generated for <strong>{{ patient.full_name }}</strong>:</p>
+
+              <div class="qr-display-container bg-white p-3 rounded border mx-auto d-inline-block">
+                <img src="{{ patient.qr_code_image }}" alt="Patient QR Code" style="max-width: 200px; height: auto;">
+              </div>
+
+              <div class="mt-3">
+                <button class="btn btn-outline-primary me-2" onclick="downloadPatientQR('{{ patient.qr_code_image }}', '{{ patient.qr_token }}')">
+                  <i class="fas fa-download me-1"></i>Download QR Code
+                </button>
+                <button class="btn btn-outline-secondary" onclick="copyPatientQRUrl('{{ patient.qr_token }}')">
+                  <i class="fas fa-link me-1"></i>Copy QR Link
+                </button>
+              </div>
+
+              <div class="mt-3">
+                <a href="{{ url_for('patient_details', patient_id=patient.id) }}" class="btn btn-primary me-2">
+                  <i class="fas fa-eye me-1"></i>View Patient Details
+                </a>
+                <a href="{{ url_for('add_patient') }}" class="btn btn-outline-success">
+                  <i class="fas fa-plus me-1"></i>Add Another Patient
+                </a>
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Error Display -->
+          {% if form.errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              <strong>Please correct the following errors:</strong>
+              <ul class="mb-0 mt-2">
+                {% for field, errors in form.errors.items() %}
+                  {% for error in errors %}
+                    <li>{{ form[field].label.text }}: {{ error }}</li>
+                  {% endfor %}
+                {% endfor %}
+              </ul>
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endif %}
+
+          <form method="POST" novalidate id="patient-form">
+            {{ form.hidden_tag() }}
+
+            <!-- Basic Information -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                  <i class="fas fa-user me-2 text-primary"></i>Basic Information
+                </h5>
+              </div>
+
+              <div class="col-12 mb-3">
+                {{ form.full_name.label(class="form-label fw-semibold") }}
+                {{ form.full_name(class="form-control", placeholder="Enter full name (First Last)", required=true) }}
+                {% if form.full_name.errors %}
+                  <div class="text-danger small mt-1">{{ form.full_name.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.date_of_birth.label(class="form-label fw-semibold") }}
+                {{ form.date_of_birth(class="form-control", required=true) }}
+                {% if form.date_of_birth.errors %}
+                  <div class="text-danger small mt-1">{{ form.date_of_birth.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.gender.label(class="form-label fw-semibold") }}
+                {{ form.gender(class="form-select", required=true) }}
+                {% if form.gender.errors %}
+                  <div class="text-danger small mt-1">{{ form.gender.errors[0] }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                  <i class="fas fa-map-marker-alt me-2 text-primary"></i>Address
+                </h5>
+              </div>
+
+              <div class="col-12 mb-3">
+                {{ form.address_line1.label(class="form-label fw-semibold") }}
+                {{ form.address_line1(class="form-control", placeholder="Street address, building name, etc.", required=true) }}
+                {% if form.address_line1.errors %}
+                  <div class="text-danger small mt-1">{{ form.address_line1.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 mb-3">
+                {{ form.address_line2.label(class="form-label fw-semibold") }}
+                {{ form.address_line2(class="form-control", placeholder="Apartment, suite, unit, etc. (optional)") }}
+                {% if form.address_line2.errors %}
+                  <div class="text-danger small mt-1">{{ form.address_line2.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 mb-3">
+                {{ form.city.label(class="form-label fw-semibold") }}
+                {{ form.city(class="form-control", placeholder="City", required=true) }}
+                {% if form.city.errors %}
+                  <div class="text-danger small mt-1">{{ form.city.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 mb-3">
+                {{ form.province.label(class="form-label fw-semibold") }}
+                {{ form.province(class="form-control", placeholder="Province", required=true) }}
+                {% if form.province.errors %}
+                  <div class="text-danger small mt-1">{{ form.province.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4 mb-3">
+                {{ form.postal_code.label(class="form-label fw-semibold") }}
+                {{ form.postal_code(class="form-control", placeholder="12345", required=true) }}
+                {% if form.postal_code.errors %}
+                  <div class="text-danger small mt-1">{{ form.postal_code.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 mb-3">
+                {{ form.country.label(class="form-label fw-semibold") }}
+                {{ form.country(class="form-control", required=true) }}
+                {% if form.country.errors %}
+                  <div class="text-danger small mt-1">{{ form.country.errors[0] }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                  <i class="fas fa-phone me-2 text-primary"></i>Contact Information
+                </h5>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.phone_primary.label(class="form-label fw-semibold") }}
+                {{ form.phone_primary(class="form-control", placeholder="0771234567", required=true) }}
+                <div class="form-text">Format: 0771234567 or +94771234567</div>
+                {% if form.phone_primary.errors %}
+                  <div class="text-danger small mt-1">{{ form.phone_primary.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.phone_secondary.label(class="form-label fw-semibold") }}
+                {{ form.phone_secondary(class="form-control", placeholder="0112345678 (optional)") }}
+                <div class="form-text">Optional secondary contact</div>
+                {% if form.phone_secondary.errors %}
+                  <div class="text-danger small mt-1">{{ form.phone_secondary.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 mb-3">
+                {{ form.email.label(class="form-label fw-semibold") }}
+                {{ form.email(class="form-control", placeholder="patient@example.com (optional)") }}
+                {% if form.email.errors %}
+                  <div class="text-danger small mt-1">{{ form.email.errors[0] }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Medical Information -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                  <i class="fas fa-heartbeat me-2 text-primary"></i>Medical Information
+                </h5>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.blood_type.label(class="form-label fw-semibold") }}
+                {{ form.blood_type(class="form-select") }}
+                {% if form.blood_type.errors %}
+                  <div class="text-danger small mt-1">{{ form.blood_type.errors[0] }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.guardian_number.label(class="form-label fw-semibold") }}
+                {{ form.guardian_number(class="form-control", placeholder="Emergency contact (optional)") }}
+                <div class="form-text">Guardian or emergency contact information</div>
+                {% if form.guardian_number.errors %}
+                  <div class="text-danger small mt-1">{{ form.guardian_number.errors[0] }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="row">
+              <div class="col-12">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                  <a href="{{ url_for('patients') }}" class="btn btn-secondary me-2">
+                    <i class="fas fa-times me-2"></i>Cancel
+                  </a>
+                  {{ form.submit(class="btn btn-success btn-lg px-4") }}
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container for notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+  <div id="notification-toast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-message">
+        <!-- Toast message will be inserted here -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Add some custom styling -->
+<style>
+.card-header {
+  border-bottom: 3px solid rgba(255,255,255,0.2);
+}
+
+.form-label {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.text-danger {
+  font-size: 0.875rem;
+}
+
+.border-bottom {
+  border-color: #e9ecef !important;
+}
+
+.bg-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  font-weight: 600;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ea47b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.alert-danger {
+  border-left: 4px solid #dc3545;
+}
+
+.qr-display-container {
+  max-width: 250px;
+}
+
+.form-control.is-invalid, .form-select.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.form-control.is-valid, .form-select.is-valid {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1.5rem !important;
+  }
+}
+
+/* Loading animation for submit button */
+.btn-loading {
+  position: relative;
+  color: transparent;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<!-- Add client-side validation and QR functions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('#patient-form');
+  const submitBtn = form.querySelector('input[type="submit"]');
+  const phoneFields = ['phone_primary', 'phone_secondary', 'guardian_number'];
+
+  // Phone number formatting and validation
+  phoneFields.forEach(fieldName => {
+    const field = document.getElementById(fieldName) || document.querySelector(`input[name="${fieldName}"]`);
+    if (field) {
+      field.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+
+        // Format Sri Lankan phone numbers
+        if (value.startsWith('94')) {
+          value = '+' + value;
+        } else if (value.length === 9 && !value.startsWith('0')) {
+          value = '0' + value;
+        }
+
+        e.target.value = value;
+        validatePhoneField(e.target);
+      });
+
+      field.addEventListener('blur', function(e) {
+        validatePhoneField(e.target);
+      });
+    }
+  });
+
+  // Email validation
+  const emailField = document.getElementById('email') || document.querySelector('input[name="email"]');
+  if (emailField) {
+    emailField.addEventListener('blur', function(e) {
+      validateEmailField(e.target);
+    });
+  }
+
+  // Date of birth validation
+  const dobField = document.getElementById('date_of_birth') || document.querySelector('input[name="date_of_birth"]');
+  if (dobField) {
+    // Set max date to today
+    const today = new Date().toISOString().split('T')[0];
+    dobField.setAttribute('max', today);
+
+    dobField.addEventListener('change', function(e) {
+      validateDateField(e.target);
+    });
+  }
+
+  // Form validation feedback
+  form.addEventListener('submit', function(e) {
+    const requiredFields = document.querySelectorAll('input[required], select[required]');
+    let hasErrors = false;
+
+    // Clear previous validation states
+    document.querySelectorAll('.is-invalid, .is-valid').forEach(field => {
+      field.classList.remove('is-invalid', 'is-valid');
+    });
+
+    // Validate required fields
+    requiredFields.forEach(field => {
+      if (!field.value.trim()) {
+        field.classList.add('is-invalid');
+        hasErrors = true;
+      } else {
+        field.classList.add('is-valid');
+      }
+    });
+
+    // Additional field-specific validation
+    if (emailField && emailField.value && !validateEmail(emailField.value)) {
+      emailField.classList.add('is-invalid');
+      hasErrors = true;
+    }
+
+    phoneFields.forEach(fieldName => {
+      const field = document.getElementById(fieldName) || document.querySelector(`input[name="${fieldName}"]`);
+      if (field && field.value && !validatePhoneNumber(field.value)) {
+        field.classList.add('is-invalid');
+        hasErrors = true;
+      }
+    });
+
+    if (hasErrors) {
+      e.preventDefault();
+      showToast('Please correct the highlighted errors before submitting.', 'error');
+      return false;
+    }
+
+    // Show loading state
+    submitBtn.classList.add('btn-loading');
+    submitBtn.disabled = true;
+  });
+
+  // Real-time validation functions
+  function validatePhoneField(field) {
+    if (field.value && !validatePhoneNumber(field.value)) {
+      field.classList.add('is-invalid');
+      field.classList.remove('is-valid');
+    } else if (field.value) {
+      field.classList.add('is-valid');
+      field.classList.remove('is-invalid');
+    } else {
+      field.classList.remove('is-invalid', 'is-valid');
+    }
+  }
+
+  function validateEmailField(field) {
+    if (field.value && !validateEmail(field.value)) {
+      field.classList.add('is-invalid');
+      field.classList.remove('is-valid');
+    } else if (field.value) {
+      field.classList.add('is-valid');
+      field.classList.remove('is-invalid');
+    } else {
+      field.classList.remove('is-invalid', 'is-valid');
+    }
+  }
+
+  function validateDateField(field) {
+    const selectedDate = new Date(field.value);
+    const today = new Date();
+
+    if (selectedDate > today) {
+      field.classList.add('is-invalid');
+      field.classList.remove('is-valid');
+    } else if (field.value) {
+      field.classList.add('is-valid');
+      field.classList.remove('is-invalid');
+    }
+  }
+
+  function validatePhoneNumber(phone) {
+    // Sri Lankan phone number patterns
+    const patterns = [
+      /^0[0-9]{9}$/,           // Local format: 0771234567
+      /^\+94[0-9]{9}$/,        // International format: +94771234567
+      /^94[0-9]{9}$/           // International without +: 94771234567
+    ];
+
+    return patterns.some(pattern => pattern.test(phone));
+  }
+
+  function validateEmail(email) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailPattern.test(email);
+  }
+
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('notification-toast');
+    const toastMessage = document.getElementById('toast-message');
+
+    toastMessage.textContent = message;
+
+    // Set toast color based on type
+    toast.className = `toast align-items-center text-white border-0 ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+  }
+});
+
+// QR Code related functions
+function downloadPatientQR(qrImageUrl, qrToken) {
+  try {
+    const link = document.createElement('a');
+    link.href = qrImageUrl;
+    link.download = `patient_qr_${qrToken}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast('QR Code downloaded successfully!');
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('Failed to download QR code. Please try again.', 'error');
+  }
+}
+
+function copyPatientQRUrl(qrToken) {
+  try {
+    const baseUrl = window.location.origin;
+    const qrUrl = `${baseUrl}/patient/qr/${qrToken}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(qrUrl).then(() => {
+        showToast('QR link copied to clipboard!');
+      }).catch(() => {
+        fallbackCopyTextToClipboard(qrUrl);
+      });
+    } else {
+      fallbackCopyTextToClipboard(qrUrl);
+    }
+  } catch (error) {
+    console.error('Copy error:', error);
+    showToast('Failed to copy QR link. Please try again.', 'error');
+  }
+}
+
+function fallbackCopyTextToClipboard(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const result = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    if (result) {
+      showToast('QR link copied to clipboard!');
+    } else {
+      showToast('Failed to copy QR link. Please copy manually.', 'error');
+    }
+  } catch (error) {
+    document.body.removeChild(textArea);
+    showToast('Failed to copy QR link. Please copy manually.', 'error');
+  }
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('notification-toast');
+  const toastMessage = document.getElementById('toast-message');
+
+  if (toast && toastMessage) {
+    toastMessage.textContent = message;
+
+    // Set toast color based on type
+    toast.className = `toast align-items-center text-white border-0 ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+
+    // Check if Bootstrap is available
+    if (typeof bootstrap !== 'undefined') {
+      const bsToast = new bootstrap.Toast(toast);
+      bsToast.show();
+    } else {
+      // Fallback: show alert if Bootstrap toast is not available
+      alert(message);
+    }
+  }
+}
+
+// Auto-hide success message after form submission
+document.addEventListener('DOMContentLoaded', function() {
+  const qrSuccessDisplay = document.getElementById('qr-success-display');
+  if (qrSuccessDisplay) {
+    // Auto-scroll to the success message
+    qrSuccessDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <h3 class="fw-bold text-success mb-4">Add Medical Encounter</h3>
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div class="row">
+        <div class="col-md-6 mb-3">{{ form.receipt_number.label }} {{ form.receipt_number(class="form-control") }}</div>
+        <div class="col-md-6 mb-3">{{ form.treatment_date.label }} {{ form.treatment_date(class="form-control") }}</div>
+      </div>
+
+      <div class="mb-3">{{ form.diagnosis_text.label }} {{ form.diagnosis_text(class="form-control") }}</div>
+      <div class="mb-3">{{ form.diagnosis_code.label }} {{ form.diagnosis_code(class="form-control") }}</div>
+
+      <h5 class="fw-bold mt-3">Prescribed Medicines</h5>
+      <div class="row">
+        <div class="col-md-3 mb-3">{{ form.medicine_1_name.label }} {{ form.medicine_1_name(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_1_dosage.label }} {{ form.medicine_1_dosage(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_1_frequency.label }} {{ form.medicine_1_frequency(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_1_duration.label }} {{ form.medicine_1_duration(class="form-control") }}</div>
+      </div>
+      <div class="row">
+        <div class="col-md-3 mb-3">{{ form.medicine_2_name.label }} {{ form.medicine_2_name(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_2_dosage.label }} {{ form.medicine_2_dosage(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_2_frequency.label }} {{ form.medicine_2_frequency(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_2_duration.label }} {{ form.medicine_2_duration(class="form-control") }}</div>
+      </div>
+      <div class="row">
+        <div class="col-md-3 mb-3">{{ form.medicine_3_name.label }} {{ form.medicine_3_name(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_3_dosage.label }} {{ form.medicine_3_dosage(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_3_frequency.label }} {{ form.medicine_3_frequency(class="form-control") }}</div>
+        <div class="col-md-3 mb-3">{{ form.medicine_3_duration.label }} {{ form.medicine_3_duration(class="form-control") }}</div>
+      </div>
+
+      <div class="mb-3">{{ form.suggestions.label }} {{ form.suggestions(class="form-control") }}</div>
+
+      {{ form.submit(class="btn btn-success w-100 fw-bold") }}
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<!-- For Doctor Dashboard - Add this card/section -->
+<div class="col-md-6 mb-4">
+    <div class="card h-100">
+        <div class="card-body text-center">
+            <i class="fas fa-qrcode fa-3x text-primary mb-3"></i>
+            <h5 class="card-title">QR Scanner</h5>
+            <p class="card-text">Scan patient QR codes to quickly access medical records</p>
+            <a href="{{ url_for('qr_scanner') }}" class="btn btn-primary">
+                <i class="fas fa-camera"></i> Open Scanner
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Or add as a quick action button in the navigation/header -->
+<a href="{{ url_for('qr_scanner') }}" class="btn btn-outline-primary">
+    <i class="fas fa-qrcode"></i> Scan QR
+</a>
+</body>
+</html>

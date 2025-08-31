@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="fw-bold text-primary">Patient Details</h3>
+  <div class="btn-group" role="group">
+    {% if current_user_type in ["hospital_admin", "doctor"] %}
+      <a href="{{ url_for('edit_patient', patient_id=patient.id) }}" class="btn btn-primary">
+        <i class="fas fa-edit"></i> Edit Patient
+      </a>
+    {% endif %}
+    {% if current_user_type in ["hospital_admin"] %}
+      <a href="{{ url_for('add_patient_identifier', patient_id=patient.id) }}" class="btn btn-outline-primary">
+        <i class="fas fa-plus"></i> Add Identifier
+      </a>
+    {% endif %}
+    {% if current_user_type == "doctor" %}
+      <a href="{{ url_for('add_encounter', patient_id=patient.id) }}" class="btn btn-success">
+        <i class="fas fa-stethoscope"></i> New Encounter
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <!-- Patient Information Card -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0"><i class="fas fa-user"></i> Patient Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h4 class="fw-bold text-primary">{{ patient.full_name }}</h4>
+            <p class="mb-2"><strong>Date of Birth:</strong> {{ patient.date_of_birth.strftime('%Y-%m-%d') if patient.date_of_birth else "—" }}</p>
+            <p class="mb-2"><strong>Gender:</strong> {{ patient.gender | title if patient.gender else "—" }}</p>
+            <p class="mb-2"><strong>Blood Type:</strong> {{ patient.blood_type or "—" }}</p>
+          </div>
+          <div class="col-md-6">
+            <p class="mb-2"><strong>Email:</strong> {{ patient.email or "—" }}</p>
+            <p class="mb-2"><strong>Phone:</strong> {{ patient.contact_info.phone_primary if patient.contact_info and patient.contact_info.phone_primary else "—" }}</p>
+            <p class="mb-2"><strong>Guardian Contact:</strong> {{ patient.guardian_number or "—" }}</p>
+          </div>
+        </div>
+
+        {% if patient.address %}
+        <hr>
+        <p class="mb-0"><strong>Address:</strong></p>
+        <p class="text-muted">
+          {{ patient.address.address_line1 if patient.address.address_line1 else "" }}
+          {{ patient.address.address_line2 if patient.address.address_line2 else "" }}<br>
+          {{ patient.address.city if patient.address.city else "" }}
+          {{ patient.address.province if patient.address.province else "" }}
+          {{ patient.address.postal_code if patient.address.postal_code else "" }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Medical Encounters -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="fas fa-stethoscope"></i> Medical Encounters</h5>
+        {% if current_user_type == "doctor" %}
+          <a href="{{ url_for('add_encounter', patient_id=patient.id) }}" class="btn btn-light btn-sm">
+            <i class="fas fa-plus"></i> Add Encounter
+          </a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if encounters %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Doctor</th>
+                  <th>Diagnosis</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for enc in encounters %}
+                <tr>
+                  <td>{{ enc.treatment_date.strftime('%Y-%m-%d') if enc.treatment_date else "—" }}</td>
+                  <td>{{ enc.doctor.full_name if enc.doctor else "Unknown" }}</td>
+                  <td>{{ enc.diagnosis_text[:50] }}{% if enc.diagnosis_text and enc.diagnosis_text|length > 50 %}...{% endif %}</td>
+                  <td>
+                    {% if current_user_type == "doctor" and enc.doctor_id == current_user_id %}
+                      <a href="{{ url_for('edit_encounter', encounter_id=enc.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No encounters recorded for this patient.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <!-- Patient QR Code -->
+    {% if patient.qr_token %}
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-gradient-primary text-white">
+          <h5 class="card-title mb-0"><i class="fas fa-qrcode"></i> Patient QR Code</h5>
+        </div>
+        <div class="card-body text-center">
+          <div class="qr-permanent-display bg-white p-3 rounded border mx-auto d-inline-block mb-3">
+            {% if patient.qr_code_image %}
+              <img src="{{ patient.qr_code_image }}" alt="Patient QR Code" style="max-width: 180px; height: auto; border-radius: 8px;">
+            {% else %}
+              <img src="{{ get_patient_qr_code(patient) }}" alt="Patient QR Code" style="max-width: 180px; height: auto; border-radius: 8px;">
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <small class="text-muted d-block mb-1"><strong>Token:</strong></small>
+            <code class="bg-light p-2 rounded d-block" style="font-size: 0.75em; word-break: break-all;">{{ patient.qr_token }}</code>
+          </div>
+
+          <div class="d-grid gap-2">
+            <a href="{{ url_for('download_patient_qr', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-download me-1"></i>Download QR Code
+            </a>
+            <button class="btn btn-outline-secondary btn-sm" onclick="copyPatientQRToken('{{ patient.qr_token }}')">
+              <i class="fas fa-copy me-1"></i>Copy Token
+            </button>
+            <button class="btn btn-outline-info btn-sm" onclick="copyPatientQRUrl('{{ patient.qr_token }}')">
+              <i class="fas fa-link me-1"></i>Copy QR Link
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Identifiers -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="fas fa-id-card"></i> Identifiers</h5>
+        {% if current_user_type in ["hospital_admin"] %}
+          <a href="{{ url_for('add_patient_identifier', patient_id=patient.id) }}" class="btn btn-light btn-sm">
+            <i class="fas fa-plus"></i> Add
+          </a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if identifiers %}
+          {% for id in identifiers %}
+            <div class="mb-2 p-2 bg-light rounded">
+              <strong>{{ id.id_type | title }}:</strong><br>
+              <span class="text-muted">{{ id.id_value }}</span>
+              {% if id.issued_country %}
+                <br><small class="text-muted">{{ id.issued_country }}</small>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No identifiers added.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Back Button -->
+<div class="mt-4">
+  <a href="{{ url_for('patients') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back to Patients
+  </a>
+</div>
+
+<!-- Toast notification for feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+  <div id="notification-toast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-message">
+        <!-- Toast message will be inserted here -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Styling -->
+<style>
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.qr-permanent-display {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.qr-permanent-display:hover {
+  transform: scale(1.05);
+}
+
+.btn-group-vertical .btn {
+  border-radius: 0.25rem !important;
+  margin-bottom: 0.5rem;
+}
+
+.btn-group-vertical .btn:last-child {
+  margin-bottom: 0;
+}
+
+.card-header.bg-gradient-primary {
+  border-bottom: 3px solid rgba(255,255,255,0.2);
+}
+
+@media (max-width: 768px) {
+  .qr-permanent-display img {
+    max-width: 150px !important;
+  }
+
+  .d-grid .btn {
+    font-size: 0.875rem;
+  }
+}
+</style>
+
+<script>
+  // Show toast notifications
+  function showToast(message, type = 'success') {
+      const toast = document.getElementById('notification-toast');
+      const toastMessage = document.getElementById('toast-message');
+
+      if (toast && toastMessage) {
+          toastMessage.textContent = message;
+
+          // Set toast color based on type
+          toast.className = `toast align-items-center text-white border-0 ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+
+          // Check if Bootstrap is available
+          if (typeof bootstrap !== 'undefined') {
+              const bsToast = new bootstrap.Toast(toast);
+              bsToast.show();
+          } else {
+              // Fallback: show alert if Bootstrap toast is not available
+              alert(message);
+          }
+      }
+  }
+
+  // Copy patient's QR token to clipboard
+  function copyPatientQRToken(qrToken) {
+      try {
+          if (navigator.clipboard) {
+              navigator.clipboard.writeText(qrToken).then(() => {
+                  showToast('Patient QR token copied to clipboard!');
+              }).catch(() => {
+                  fallbackCopyTextToClipboard(qrToken);
+              });
+          } else {
+              fallbackCopyTextToClipboard(qrToken);
+          }
+      } catch (error) {
+          console.error('Copy error:', error);
+          showToast('Failed to copy QR token. Please try again.', 'error');
+      }
+  }
+
+  // Copy patient's QR URL to clipboard
+  function copyPatientQRUrl(qrToken) {
+      try {
+          const baseUrl = window.location.origin;
+          const qrUrl = `${baseUrl}/patient/qr/${qrToken}`;
+
+          if (navigator.clipboard) {
+              navigator.clipboard.writeText(qrUrl).then(() => {
+                  showToast('Patient QR link copied to clipboard!');
+              }).catch(() => {
+                  fallbackCopyTextToClipboard(qrUrl);
+              });
+          } else {
+              fallbackCopyTextToClipboard(qrUrl);
+          }
+      } catch (error) {
+          console.error('Copy error:', error);
+          showToast('Failed to copy QR link. Please try again.', 'error');
+      }
+  }
+
+  // Fallback copy function for older browsers
+  function fallbackCopyTextToClipboard(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+          const result = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (result) {
+              showToast('Copied to clipboard!');
+          } else {
+              showToast('Failed to copy. Please copy manually.', 'error');
+          }
+      } catch (error) {
+          document.body.removeChild(textArea);
+          showToast('Failed to copy. Please copy manually.', 'error');
+      }
+  }
+</script>
+
+{% endblock %}

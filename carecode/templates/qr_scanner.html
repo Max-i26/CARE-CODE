@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- QR Scanner Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-camera"></i> QR Code Scanner
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Camera Permission Status -->
+                    <div id="camera-status" class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Click "Start Scanner" to begin scanning patient QR codes.
+                    </div>
+
+                    <!-- Scanner Controls -->
+                    <div class="mb-3">
+                        <button id="start-scanner" class="btn btn-success me-2">
+                            <i class="fas fa-play"></i> Start Scanner
+                        </button>
+                        <button id="stop-scanner" class="btn btn-danger me-2" disabled>
+                            <i class="fas fa-stop"></i> Stop Scanner
+                        </button>
+                        <button id="switch-camera" class="btn btn-outline-secondary" disabled>
+                            <i class="fas fa-sync"></i> Switch Camera
+                        </button>
+                    </div>
+
+                    <!-- Video Preview -->
+                    <div id="scanner-container" style="display: none;">
+                        <video id="qr-video" width="100%" height="400" style="border-radius: 8px; border: 2px solid #dee2e6;"></video>
+                        <div id="scan-overlay" class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                            <div style="width: 200px; height: 200px; border: 2px dashed #fff; border-radius: 8px; background: rgba(0,0,0,0.1);"></div>
+                        </div>
+                    </div>
+
+                    <!-- Manual QR Input -->
+                    <div class="mt-4">
+                        <h6>Or enter QR code manually:</h6>
+                        <div class="input-group">
+                            <input type="text" id="manual-qr-input" class="form-control" placeholder="Paste QR code URL or token here">
+                            <button id="validate-manual-qr" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> Validate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Scan Results -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-check-circle"></i> Scan Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="scan-results" class="text-center">
+                        <p class="text-muted"><i class="fas fa-qrcode fa-3x mb-3 d-block"></i>Scan a patient QR code to see their information here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Scans -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history"></i> Recent Scans
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="recent-scans">
+                        <p class="text-muted mb-0">No recent scans.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="notification-toast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-message"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Scanner Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+
+<style>
+#scanner-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+#qr-video {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+}
+
+.scan-result-card {
+    border-left: 4px solid #28a745;
+    background-color: #f8f9fa;
+}
+
+.recent-scan-item {
+    padding: 8px;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.recent-scan-item:hover {
+    background-color: #f8f9fa;
+}
+
+.recent-scan-item:last-child {
+    border-bottom: none;
+}
+
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+let qrScanner = null;
+let recentScans = JSON.parse(localStorage.getItem('recentScans') || '[]');
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    updateRecentScans();
+
+    // Event listeners
+    document.getElementById('start-scanner').addEventListener('click', startScanner);
+    document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+    document.getElementById('switch-camera').addEventListener('click', switchCamera);
+    document.getElementById('validate-manual-qr').addEventListener('click', validateManualQR);
+
+    // Enter key for manual input
+    document.getElementById('manual-qr-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            validateManualQR();
+        }
+    });
+});
+
+// Get CSRF token
+function getCsrfToken() {
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    return csrfMeta ? csrfMeta.getAttribute('content') : '';
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('notification-toast');
+    const toastMessage = document.getElementById('toast-message');
+
+    if (toast && toastMessage) {
+        toastMessage.textContent = message;
+        toast.className = `toast align-items-center text-white border-0 ${type === 'error' ? 'bg-danger' : 'bg-success'}`;
+
+        if (typeof bootstrap !== 'undefined') {
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        } else {
+            alert(message);
+        }
+    }
+}
+
+// Update camera status
+function updateCameraStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('camera-status');
+    statusDiv.className = `alert alert-${type}`;
+    statusDiv.innerHTML = `<i class="fas fa-${type === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+}
+
+// Start QR scanner
+async function startScanner() {
+    try {
+        const videoElement = document.getElementById('qr-video');
+        const scannerContainer = document.getElementById('scanner-container');
+
+        updateCameraStatus('Starting camera...', 'warning');
+
+        qrScanner = new QrScanner(videoElement, result => {
+            handleQRScan(result.data);
+        }, {
+            onDecodeError: err => {
+                // Ignore decode errors (happens when no QR in frame)
+                console.log('Decode error:', err);
+            },
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+        });
+
+        await qrScanner.start();
+
+        scannerContainer.style.display = 'block';
+        updateCameraStatus('Camera active - Point camera at QR code', 'success');
+
+        // Update button states
+        document.getElementById('start-scanner').disabled = true;
+        document.getElementById('stop-scanner').disabled = false;
+        document.getElementById('switch-camera').disabled = false;
+
+    } catch (error) {
+        console.error('Error starting scanner:', error);
+        updateCameraStatus('Error accessing camera. Please check permissions.', 'danger');
+        showToast('Failed to start camera. Please check permissions.', 'error');
+    }
+}
+
+// Stop QR scanner
+function stopScanner() {
+    if (qrScanner) {
+        qrScanner.stop();
+        qrScanner.destroy();
+        qrScanner = null;
+    }
+
+    document.getElementById('scanner-container').style.display = 'none';
+    updateCameraStatus('Scanner stopped.', 'secondary');
+
+    // Update button states
+    document.getElementById('start-scanner').disabled = false;
+    document.getElementById('stop-scanner').disabled = true;
+    document.getElementById('switch-camera').disabled = true;
+}
+
+// Switch camera
+async function switchCamera() {
+    if (qrScanner) {
+        try {
+            await qrScanner.setCamera('environment');
+            showToast('Switched to back camera');
+        } catch (error) {
+            try {
+                await qrScanner.setCamera('user');
+                showToast('Switched to front camera');
+            } catch (error2) {
+                showToast('Could not switch camera', 'error');
+            }
+        }
+    }
+}
+
+// Handle QR scan result
+function handleQRScan(qrData) {
+    console.log('QR Code scanned:', qrData);
+
+    // Stop scanner temporarily to prevent multiple scans
+    if (qrScanner) {
+        qrScanner.stop();
+    }
+
+    // Validate the QR code
+    validateQRCode(qrData);
+
+    // Restart scanner after 2 seconds
+    setTimeout(() => {
+        if (qrScanner) {
+            qrScanner.start();
+        }
+    }, 2000);
+}
+
+// Validate manual QR input
+function validateManualQR() {
+    const qrInput = document.getElementById('manual-qr-input').value.trim();
+
+    if (!qrInput) {
+        showToast('Please enter a QR code or URL', 'error');
+        return;
+    }
+
+    validateQRCode(qrInput);
+    document.getElementById('manual-qr-input').value = '';
+}
+
+// Validate QR code with server
+function validateQRCode(qrData) {
+    const resultsDiv = document.getElementById('scan-results');
+
+    // Show loading state
+    resultsDiv.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p class="mt-2">Validating QR code...</p>
+    `;
+
+    const csrfToken = getCsrfToken();
+
+    fetch('/api/validate-qr', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ qr_url: qrData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayPatientInfo(data);
+            addToRecentScans(data);
+            showToast('QR code validated successfully!');
+
+            // Optionally redirect to patient detail page
+            if (confirm(`Would you like to view ${data.patient_name}'s full medical record?`)) {
+                window.location.href = data.redirect_url;
+            }
+        } else {
+            displayError(data.error || 'Invalid QR code');
+            showToast(data.error || 'Invalid QR code', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Validation error:', error);
+        displayError('Network error occurred');
+        showToast('Network error occurred', 'error');
+    });
+}
+
+// Display patient information
+function displayPatientInfo(data) {
+    const resultsDiv = document.getElementById('scan-results');
+
+    resultsDiv.innerHTML = `
+        <div class="scan-result-card p-3 rounded">
+            <h6 class="text-success mb-2">
+                <i class="fas fa-check-circle"></i> Patient Found
+            </h6>
+            <p class="mb-1"><strong>Name:</strong> ${data.patient_name}</p>
+            <p class="mb-1"><strong>Patient ID:</strong> ${data.patient_id}</p>
+            <hr>
+            <div class="d-grid">
+                <a href="${data.redirect_url}" class="btn btn-primary">
+                    <i class="fas fa-user-md"></i> View Medical Record
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+// Display error message
+function displayError(message) {
+    const resultsDiv = document.getElementById('scan-results');
+
+    resultsDiv.innerHTML = `
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Error:</strong> ${message}
+        </div>
+        <p class="text-muted mt-3">
+            <i class="fas fa-qrcode fa-2x mb-2 d-block"></i>
+            Try scanning another QR code
+        </p>
+    `;
+}
+
+// Add scan to recent history
+function addToRecentScans(data) {
+    const scan = {
+        timestamp: new Date().toISOString(),
+        patient_name: data.patient_name,
+        patient_id: data.patient_id,
+        redirect_url: data.redirect_url
+    };
+
+    // Add to beginning of array
+    recentScans.unshift(scan);
+
+    // Keep only last 5 scans
+    recentScans = recentScans.slice(0, 5);
+
+    // Save to localStorage
+    localStorage.setItem('recentScans', JSON.stringify(recentScans));
+
+    updateRecentScans();
+}
+
+// Update recent scans display
+function updateRecentScans() {
+    const recentScansDiv = document.getElementById('recent-scans');
+
+    if (recentScans.length === 0) {
+        recentScansDiv.innerHTML = '<p class="text-muted mb-0">No recent scans.</p>';
+        return;
+    }
+
+    const scansHtml = recentScans.map(scan => {
+        const date = new Date(scan.timestamp).toLocaleString();
+        return `
+            <div class="recent-scan-item" onclick="window.open('${scan.redirect_url}', '_blank')">
+                <div class="fw-bold">${scan.patient_name}</div>
+                <small class="text-muted">${date}</small>
+            </div>
+        `;
+    }).join('');
+
+    recentScansDiv.innerHTML = scansHtml;
+}
+
+// Clean up when page is unloaded
+window.addEventListener('beforeunload', function() {
+    if (qrScanner) {
+        qrScanner.destroy();
+    }
+});
+</script>
+
+{% endblock %}

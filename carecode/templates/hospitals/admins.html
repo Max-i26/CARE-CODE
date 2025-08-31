@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="fw-bold text-secondary">Hospital Admins - {{ hospital.name }}</h3>
+  <a href="{{ url_for('add_hospital_admin', hospital_id=hospital.id) }}" class="btn btn-success fw-bold shadow-sm">
+    + Add Admin
+  </a>
+</div>
+
+{% if admins %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle shadow-sm">
+      <thead class="table-secondary">
+        <tr>
+          <th>Full Name</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for admin in admins %}
+        <tr>
+          <td>{{ admin.full_name }}</td>
+          <td>{{ admin.username }}</td>
+          <td>{{ admin.email }}</td>
+          <td>
+            {% if admin.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-info">No admins found for this hospital.</div>
+{% endif %}
+{% endblock %}
