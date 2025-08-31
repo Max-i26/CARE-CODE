@@ -19,7 +19,7 @@ from flask import request, jsonify, session, render_template, abort, redirect, u
 now = datetime.now(timezone.utc)
 
 
-# Import models and forms
+
 from models import (db, Ministry, Hospital, HospitalAdmin, Patient, PatientIdentifier, Doctor, MedicalEncounter,
                      AuditLog, PatientHospital, )
 from forms import (LoginForm, HospitalForm, HospitalAdminForm, PatientForm, PatientIdentifierForm, DoctorForm,
@@ -1382,4 +1382,5 @@ app = create_app()
 if __name__ == "__main__":
 
     app.run(debug=True, host="0.0.0.0", port=5000)
+
 
